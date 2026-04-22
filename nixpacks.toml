@@ -1,5 +1,0 @@
-[phases.setup]
-aptPkgs = ["poppler-utils"]
-
-[start]
-cmd = "python server.py"
