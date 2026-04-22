@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<script>window.SERVER_URL = "https://server-check-pack-production.up.railway.app"; window.API_KEY_MANAGED = true;</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSC — Compliance Checker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #c8ff00;
+    --accent-dim: rgba(200,255,0,0.12);
+    --text: #e8e8e8;
+    --text-muted: #666;
+    --text-dim: #999;
+    --ok: #4ade80;
+    --warn: #facc15;
+    --err: #f87171;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-sub { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 32px; }
+
+  h1 { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 6px; }
+  h1 span { color: var(--accent); font-weight: 600; }
+  .subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 36px; }
+
+  .api-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .api-section label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+  .api-section input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-section input:focus { border-color: var(--accent); }
+
+  .dropzone-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-dim); }
+  .dropzone.done { border-color: rgba(200,255,0,0.4); border-style: solid; }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .drop-icon { font-size: 28px; margin-bottom: 10px; }
+  .drop-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .drop-sub { color: var(--text-muted); font-size: 11px; }
+  .drop-status { color: var(--accent); font-size: 12px; font-family: 'DM Mono', monospace; margin-top: 8px; min-height: 18px; }
+
+  #mapping-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+  .mapping-grid { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 16px; align-items: center; }
+  .mapping-ean { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); }
+  .mapping-badge { font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 8px; border-radius: 20px; }
+  .badge-el { background: rgba(200,255,0,0.1); color: var(--accent); border: 1px solid rgba(200,255,0,0.2); }
+  .badge-non-el { background: rgba(153,153,153,0.1); color: var(--text-dim); border: 1px solid var(--border); }
+
+  #file-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .file-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px; }
+  .file-row:last-child { border-bottom: none; }
+  .file-row-name { font-family: 'DM Mono', monospace; color: var(--text-dim); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-row-ean { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .tag-match { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .tag-ok { background: rgba(74,222,128,0.1); color: var(--ok); border: 1px solid rgba(74,222,128,0.2); }
+  .tag-no-match { background: rgba(248,113,113,0.1); color: var(--err); border: 1px solid rgba(248,113,113,0.2); }
+
+  .run-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #0f0f0f;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 32px;
+    width: 100%;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+  }
+  .run-btn:hover:not(:disabled) { background: #d4ff1a; transform: translateY(-1px); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  #results { margin-top: 36px; }
+
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; animation: slideIn 0.25s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .result-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .result-header:hover { background: var(--surface2); }
+  .result-title strong { color: var(--text); font-size: 13px; display: block; margin-bottom: 2px; }
+  .result-title span { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); }
+
+  .result-badge { font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+  .badge-ok { background: rgba(74,222,128,0.15); color: var(--ok); border: 1px solid rgba(74,222,128,0.3); }
+  .badge-warn { background: rgba(250,204,21,0.15); color: var(--warn); border: 1px solid rgba(250,204,21,0.3); }
+  .badge-err { background: rgba(248,113,113,0.15); color: var(--err); border: 1px solid rgba(248,113,113,0.3); }
+  .badge-loading { background: rgba(200,255,0,0.1); color: var(--accent); border: 1px solid rgba(200,255,0,0.2); }
+
+  .result-body { padding: 16px 20px; display: none; }
+  .result-body.open { display: block; }
+
+  .check-group { margin-bottom: 16px; }
+  .check-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
+  .check-item:last-child { border-bottom: none; }
+  .check-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .check-label { flex: 1; color: var(--text-dim); }
+  .check-label.found { color: var(--text); }
+  .check-note { font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 2px; }
+
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .summary-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 24px; display: flex; gap: 32px; margin-bottom: 20px; align-items: center; }
+  .summary-stat { text-align: center; }
+  .summary-stat .num { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; line-height: 1; }
+  .summary-stat .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+  .divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  .error-msg { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); border-radius: var(--radius); color: var(--err); font-family: 'DM Mono', monospace; font-size: 12px; padding: 14px 18px; }
+  .warn-msg { background: rgba(250,204,21,0.1); border: 1px solid rgba(250,204,21,0.3); border-radius: var(--radius); color: var(--warn); font-family: 'DM Mono', monospace; font-size: 12px; padding: 12px 16px; margin-bottom: 16px; }
+
+  .chevron { transition: transform 0.2s; display: inline-block; color: var(--text-muted); }
+  .chevron.open { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">MSC // Compliance Checker</span>
+  <span class="header-sub">Packaging — Verifica automatica per PO</span>
+</header>
+
+<main>
+  <h1>Verifica <span>Compliance</span> Packaging</h1>
+  <p class="subtitle">Carica il mapping EAN, trascina la cartella del PO — il sistema assegna il tipo e controlla tutto in automatico.</p>
+
+  <div class="api-section" id="api-section">
+    <label>API Key</label>
+    <input type="password" id="api-key" placeholder="sk-ant-api03-..." autocomplete="off">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;font-size:11px;color:var(--text-muted)">
+      <input type="checkbox" id="mock-mode"> MOCK
+    </label>
+  </div>
+
+  <div class="dropzone-row">
+    <div class="dropzone" id="dz-mapping">
+      <input type="file" id="input-mapping" accept=".xlsx,.csv">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">File mapping EAN</div>
+      <div class="drop-sub">Excel · colonne: EAN, Attribute set</div>
+      <div class="drop-status" id="mapping-status"></div>
+    </div>
+
+    <div class="dropzone" id="dz-folder">
+      <input type="file" id="input-folder" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none">
+      <div class="drop-icon">📁</div>
+      <div class="drop-title">Cartella PO</div>
+      <div class="drop-sub">Trascina la cartella — sottocartelle con PDF dentro</div>
+      <div class="drop-status" id="folder-status"></div>
+    </div>
+  </div>
+  <div style="text-align:center;margin:-8px 0 16px;">
+    <button id="btn-files" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--accent);cursor:pointer;font-size:12px;padding:7px 16px;font-family:inherit">📄 Seleziona file singoli</button>
+    <input type="file" id="input-files" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none">
+  </div>
+
+  <div id="mapping-preview">
+    <div class="section-title">Mapping caricato</div>
+    <div class="mapping-grid" id="mapping-grid"></div>
+  </div>
+
+  <div id="file-preview">
+    <div class="section-title" id="file-preview-title">File rilevati</div>
+    <div id="file-preview-list"></div>
+  </div>
+
+  <button class="run-btn" id="run-btn" disabled>Avvia controllo compliance →</button>
+  <div id="results"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── COMPLIANCE DATA ──────────────────────────────────────────────
+const SECTIONS = {
+  "Identificazione Fabbricante/Importatore": [
+    { id: "nome_fabbricante",     label: "Nome del fabbricante",                                      pack_el: true,  pack_non_el: true  },
+    { id: "indirizzo_fabbricante",label: "Indirizzo del fabbricante",                                 pack_el: true,  pack_non_el: true  },
+    { id: "nome_importatore",     label: "Nome dell'importatore",                                     pack_el: false, pack_non_el: true  },
+    { id: "indirizzo_importatore",label: "Indirizzo dell'importatore",                                pack_el: true,  pack_non_el: true  },
+    { id: "tipo_modello",         label: "Tipo o modello",                                            pack_el: false, pack_non_el: true  },
+  ],
+  "Tracciabilità": [
+    { id: "numero_serie_lotto",   label: "Numero di serie / lotto",                                   pack_el: true,  pack_non_el: false },
+    { id: "lotto",                label: "Lotto",                                                     pack_el: false, pack_non_el: true  },
+  ],
+  "Marcature e Simboli": [
+    { id: "simbolo_ce",           label: "Simbolo CE",                                                pack_el: true,  pack_non_el: false },
+    { id: "simbolo_raee",         label: "Simbolo RAEE",                                              pack_el: true,  pack_non_el: false },
+    { id: "simbolo_ukca",         label: "Simbolo UKCA",                                              pack_el: true,  pack_non_el: false },
+    { id: "simbolo_triman",       label: "Simbolo TRIMAN (Francia)",                                  pack_el: true,  pack_non_el: true  },
+    { id: "simbolo_smalt_spagnolo",label: "Simbolo smaltimento spagnolo",                            pack_el: true,  pack_non_el: true  },
+    { id: "simboli_materiali_smalt",label: "Simboli materiali smaltimento pack",                     pack_el: true,  pack_non_el: true  },
+    { id: "qr_junker",            label: "QR code Junker",                                            pack_el: true,  pack_non_el: true  },
+    { id: "simbolo_garanzia",     label: "Simbolo garanzia 2 anni",                                   pack_el: true,  pack_non_el: true  },
+    { id: "simbolo_manuale",      label: "Simbolo libretto informativo (libro aperto con i)",          pack_el: true,  pack_non_el: true  },
+    { id: "valori_nominali",      label: "Capacità batteria (mAh) e tensione nominale batteria (V)",  pack_el: true,  pack_non_el: false },
+  ]
+};
+
+
+// ── SEXY IDEAS DATA ──────────────────────────────────────────────
+const SEXY_IDEAS = {"Succhia Clitoride": {"ita": ["Abbinalo a un dildo da cavalcare come più ti piace: sentirai che combo!", "Appoggia il beccuccio sul clito e muovilo per massaggiare anche le piccole e grandi labbra.", "Voglia di un orgasmo lampo? Mettilo in borsetta e portalo sempre con te: le pause a lavoro non saranno più le stesse."], "eng": ["Match it with a ride-on dildo as you like it: you'll feel the combo!", "Place it on the clitoris and move it to massage both the small and large labia.", "Craving a quick orgasm? Put it in your purse and carry it with you always: work breaks will never be the same again."]}, "Dildo Classico": {"ita": ["Attacca il dildo al pavimento e fatti guardare mentre ti lasci penetrare a mano libera.", "Usalo in bagno come porta asciugamani di design: all’occorrenza sarà sempre pronto ad entrare in doccia con te."], "eng": ["Attach the dildo to the floor and let yourself be watched as you indulge in hands-free penetration.", "Use it in the bathroom as a designer towel holder: whenever needed, it will always be ready to join you in the shower."]}, "Dildo Doppio": {"ita": ["Unitevi in amore grazie a questo Dildo Doppio che vi legherà indissolubilmente il corpo e l'anima!", "Essere pienə non è più una cosa negativa: concediti di non avere un buco libero, sia in solitaria che in compagnia."], "eng": ["Come together in love thanks to this Double Dildo that will bind your bodies and souls inseparably!", "Let this Double Dildo fill you with everlasting pleasure, whether playing solo or with someone you like."]}, "Dildo Realistico": {"ita": ["Cavalcalo come faresti con un pipo vero: non noterai la differenza!", "Prendilo in bocca e succhialo mentre fai sesso col tuo partner per spingervi oltre i confini del godimento."], "eng": ["Ride it as if it were a real pipo: you won't notice the difference!", "Take it in your mouth and suck on it while having sex with your partner to push yourselves beyond the boundaries of pleasure."]}, "Vibratore Clitoride": {"ita": ["Tienilo tra le gambe durante una serata film e lascia che gli effetti speciali coprano i tuoi gemiti.", "Piccolo e compatto, tienilo tra due dita per stimolare il clito anche durante la penetrazione.", "Sieditici sopra, accendilo e le tue giornate di smart working non saranno più le stesse!"], "eng": ["Hold it between your legs during a movie night and let the special effects cover your moans.", "Small and compact, hold it between two fingers to stimulate the clitoris even during penetration.", "Have a seat and turn it on: your remote working days will never be the same again!"]}, "Vibratore Classico": {"ita": ["Esplora il tuo corpo e il tuo piacere senza tabù con questo Vibratore must-have da custodire nel comodino!", "Prenditi tempo per te: doccia calda, lenzuola pulite, luci soffuse, musica in sottofondo e il masturbino più pazzesco della storia."], "eng": ["Explore your body and pleasure without taboos with this must-have Vibrator to keep in your nightstand!", "Take time for yourself: warm shower, clean sheets, dim lights, background music, and the most incredible orgasm in history."]}, "Vibratore Punto G": {"ita": ["Non solo Punto G: cambia inclinazione e scopri i punti più sensibili della tua vagi.", "Prova di squirting: dita sul clito e Vibratore sul Punto G. Quanto ci metterai?", "Dentro e fuori: inserisci il Vibratore Punto G nella vagi per qualche minuto e poi stimola l'esterno con le sue vibrazioni intense."], "eng": ["Not just the G-Spot: change angles and discover the most sensitive points of your vagina.", "Time for a challenge: fingers on the clitoris and a Vibrator on the G-spot. How long will it take you to squirt?", "In and out: insert the G-Spot Vibrator in your vagina for few minutes and then stimulate the rest of your body with its strong vibrations."]}, "Vibratore Rabbit": {"ita": ["Team vagi o team clito? A noi non interessa scegliere. Prova questa combo che ti cambierà la vita!", "Videochiamalə e chiedilə se vuole vederti godere: questo Vibratore Rabbit vi regalerà un momento indimenticabile."], "eng": ["Are you Vagina Team or Clitoris Team? We don't care about choosing. Try this combo that will change your life!", "Make a videocall and ask if they want to see you pleasure yourself: this Rabbit Vibrator will give you an unforgettable moment."]}, "Vibratore Multifunzione": {"ita": ["1, 2, 3, 4, 5, 10, 100...  funzioni! Scegli la tua preferita e datti alla pazza gioia!", "Punti erogeni? Con il vibratore multifunzione l'orgasmo è assicurato su ogni fronte!", "Sei perennemente indecis*? Da oggi non dovrai più scegliere - dentro, fuori, destra, sinistra, qualsiasi zona e in qualsiasi modo!"], "eng": ["1, 2, 3, 4, 5, 10, 100... functions! Choose your favorite and have a blast!", "Erogenous zones? With the multifunction vibrator, orgasm is guaranteed on every front!", "Are you perpetually indecisive? From today onwards, you won't have to choose anymore - inside, outside, right, left, any area and in any way!"]}, "Massaggiatore Wand": {"ita": ["Inizia con un massaggio alle spalle e spostati pian piano su tutto il corpo: le vibrazioni ti daranno piacere in punti che non pensavi di avere!", "Esibisciti davanti al partner con il tuo nuovo microfono in una performance canora degna di palcoscenico, poi azionalo davvero e intona assoli di piacere.", "Clito, perineo, capezzoli, glande sono solo alcune delle parti che potrai stimolare con questo Wand Massager: ti sei mai fattə guardare mentre godi?"], "eng": ["Start with a shoulder massage and gradually move all over the body: the vibrations will give you pleasure in areas you didn't think you had!", "Show off in front of your partner with your new microphone in a stage-worthy singing performance, then really activate it and hit solos of pleasure.", "Clitoris, perineum, nipples, glans are just a few of the parts you can stimulate with this Wand Massager. Have you ever been watched while experiencing pleasure?"]}, "PALLINE VAGINALI": {"ita": ["Le tue nuove compagne d'allenamento preferite! Indossale per 15/20 minuti due volte al giorno: mentre fai allenamento, una passeggiata, o anche durante la coda alle poste. Allenerai il tuo pavimento pelvico in maniera sicura ed efficace!", "Passa gradualmente al livello successivo con i diversi pesi delle nostre Palline Vaginali!", "Inseriscile una ad una mentre stimoli il clitoride con un vibratore e sentirai che goduria"], "eng": ["Your new favorite workout companions! Wear them for 15-20 minutes twice a day: during your workout, a walk, or even while waiting in line at the post office. You will train your pelvic floor safely and effectively!", "Gradually move to the next level with the different weights of our Vaginal Balls!", "Insert them one by one while stimulating the clitoris with a vibrator, and you will experience pure pleasure."]}, "MASTURBATORE PENE": {"ita": ["Prendi il controllo dei tuoi orgasmi: più premi durante la masturbazione e più godi.", "Basta proccupazioni: vienici dentro in sicurezza e tranquillità!", "Lo sai, con una sega ti scopi chi vuoi: dai un twist ai tuoi orgasmi con questo masturbatore pene e tanta immaginazione."], "eng": ["Take control of your orgasms: the more you explore during masturbation, the more pleasure you'll experience.", "No more worries: come inside safely and with peace of mind!", "You know, with a hand job, you can pleasure anyone you want. Give a twist to your orgasm with this penis masturbator and plenty of imagination."]}, "ANELLO PER IL PENE": {"ita": ["Sappiamo che è rimasto un posticino nelle tue tasche di fianco alle chiavi. Riempilo con questo Anello Per il Pene per portarlo sempre con te!", "L’anello più efficace per chiedere la sua mano. Non servono diamanti per fare un figurone!", "Trasforma il tuo pene in un vibratore! Indossa l'Anello Per il Pene durante la penetrazione per stimolare il clito o i testicoli del partner."], "eng": ["We know there's a little spot left in your pockets next to your keys. Fill it with this Penis Ring to always carry it with you!", "The most effective ring to ask for her hand. You don't need diamonds to make a great impression!", "Transform your penis into a vibrator! Wear the Penis Ring during penetration to stimulate your partner's clitoris or testicles."]}, "GUAINA PENE": {"ita": ["Sfodera la guaina pene come un’armatura con cui affrontare i tuoi appuntamenti più galanti!", "Usala con un anello vibrante e delle palline anali vibranti: non è un terremoto, sono le vibrazioni del tuo piacere!", "Rendi il tuo pene ancora più grande con questo alleato invincibile!"], "eng": ["Unleash the penis sheath like armor to face your most gallant appointments!", "Use it with a vibrating ring and vibrating anal beads: it's not an earthquake, it's the vibrations of your pleasure!", "Make your penis even bigger with this invincible ally!"]}, "POMPA PENE": {"ita": ["C'è un alleato per rendere il tuo pene più turgido: usalo!", "Non c'è niente di meglio di una pompa per stimolare il tuo pene: goditi questi momenti di piacere!", "Aiuta l'erezione e tira fuori una Pompa Pene: il partner potrà guardare mentre la usi...ma non toccare!"], "eng": ["There's an ally to make your penis more firm: use it!", "There's nothing better than a pump to stimulate your penis. Enjoy these moments of pleasure!", "It aids in achieving an erection and brings out a Penis Pump: the partner can watch as you use it... but not touch!"]}, "DILDO ANALE": {"ita": ["Hai detto threesome? Ecco il terzo che stavi cercando.", "Una volta che lo provi da dietro... Non torni più indietro. Usalo con abbondante lubrificante.", "I suoi alleati sono il lubrificante e la Doccia Anale: c'è un nuovo amico in città, non avere paura di usarlo!"], "eng": ["Did you say threesome? Here's the third one you were looking for.", "Once you try it from behind... You won't go back. Use it with plenty of lubricant.", "Its allies are lubricant and the Anal Shower: there's a new friend in town, don't be afraid to use it!"]}, "Plug Anale": {"ita": ["Cospargi il plug anale di lubrificante e usa la punta per disegnare cerchi intorno all’ano facendolo scivolare sempre più a fondo!", "Masturbati come più ti piace e aggiungi il plug anale per quel brivido in più.", "Toc toc, chi è? Apri la tua porta sul retro a una serie di sensazioni tutte nuove e sconvolgenti."], "eng": ["Apply lubricant to the butt plug and use the tip to draw circles around the anus, gradually sliding it deeper and deeper!", "Masturbate in the way that pleases you the most and add the butt plug for that extra thrill.", "Knock, knock, who's there? Open your backdoor to a series of all-new and mind-blowing sensations."]}, "Harness": {"ita": ["Indossa l'harness su una camicia bianca per un look sexy ma estremamente elegante da sfoggiare sia in disco che in l'ufficio.", "Giacca, harness, petto nudo e hai già il look pronto per il prossimo sex party!"], "eng": ["Wear the harness over a white shirt for a sexy yet extremely classy look that can be sported both in the club and in the office.", "Jacket, harness, bare chest and here's your look for the next sex party!"]}, "TAIL PLUG": {"ita": ["Ti senti unə gattinə, stai già facendo le fusa: usa un Tail Plug e fatti accarezzare la coda dal partner.", "Il tuo partner è un cacciatore e tu sei la sua preda: un Tail Plug farà di te una vera volpe vogliosa.", "Se hai sempre desiderato scodinzolare di piacere, usa questo Tail Plug con abbondante lubrificante!", "Indossa questo Tail Plug e strusciati, mordicchia, graffia... Scatena poco a poco il tuo lato animalesco!"], "eng": ["You feel like a little kitten, already purring: use a Tail Plug and let your partner stroke your tail.", "Your partner is a hunter and you are their prey: a Tail Plug will turn you into a craving fox.", "If you've always desired to waggle with pleasure, use this Tail Plug with plenty of lubricant!", "Wear this Tail Plug and nuzzle, nibble, scratch… Unleash your wild side little by little!"]}, "PALLINE ANALI": {"ita": ["Inserisci le Palline Anali nel suo ano durante il sesso orale per un crescendo di inesorabile piacere.", "Sfila gradualmente le Palline Anali per regalarti a ogni scatto un improvviso brivido di piacere.", "Usale durante la penetrazione se non vuoi tenere neanche un buco libero!"], "eng": ["Insert the Anal Beads into their anus during oral sex for an escalating, relentless pleasure.", "Gradually remove the Anal Beads to treat yourself to a sudden thrill of pleasure with each snap.", "Use them during penetration if you don't want to leave any hole empty!"]}, "MASSAGGIATORE PROSTATA": {"ita": ["Usalo durante la masturbazione per provare un orgasmo inedito ed esplosivo.", "Il piacere può arrivare in diverse forme e dai posti più inaspettati: lasciati massaggiare con il massaggiatore prostata.", "Un massaggio alla prostata al giorno toglie il medico di torno: fallo per la tua salute!"], "eng": ["Use it during masturbation to experience a unique and explosive orgasm.", "Pleasure can come in different forms and from the most unexpected places: let yourself be massaged with the prostate massager.", "A prostate massage a day keeps the doctor away: do it for your health!"]}, "DOCCIA ANALE": {"ita": ["La cacca non fa più paura! Goditi il sesso anale senza paura di sporcare.", "Lubrifica la punta prima di inserirla nell’ano e comincia a godere ancora prima di iniziare!", "La Doccia Anale ti mantiene pulito per ogni esperienza!"], "eng": ["Poop is no longer a concern! Enjoy anal sex without fear of getting dirty.", "Lubricate the tip before inserting it into the anus and start experiencing pleasure even before you begin!", "Keep it clean with an Anal Shower!"]}, "VIBRATORE COPPIA": {"ita": ["Dai pepe alla tua vita! Abbina un Vibratore Coppia con il toy che ti piace, il tuo partner ti ringrazierà!", "Scopri il doppio piacere con un Vibratore Coppia: la penetrazione sarà più goduriosa.", "Mai più senza Vibratore Coppia: aiuta il piacere con questo toy da usare in due."], "eng": ["Spice up your life! Pair a Couple Vibrator with the toy you enjoy, and your partner will thank you!", "Discover double pleasure with a Couple Vibrator: penetration will be even more pleasurable.", "Never be without a Couples Vibrator again: enhance pleasure with this toy designed for two to enjoy together."]}, "OVETTO VIBRANTE": {"ita": ["Inseriscilo mentre te la fai leccare e cambia modalità di vibrazione con il telecomando per seguire il ritmo del tuo piacere.", "Al parco, al ristorante, a casa dei suoi: indossalo proprio dove non potresti e lascia al partner il controllo.", "Cedi il telecomando a chi vuoi tu e vibra quando meno te lo aspetti: sarà il vostro piccolo sexy segreto."], "eng": ["Insert it while getting licked and change the vibration modes with the remote control to match the rhythm of your pleasure.", "At the park, at the restaurant, at their house: wear it exactly where you shouldn't and give your partner control.", "Give the remote control to whomever you desire and vibrate when you least expect it: it will be your little sexy secret."]}, "VIBRATORE TELECOMANDATO": {"ita": ["Indossalo sotto la gonna per andare a fare una passeggiata e ritrova la via di casa grazie alle gocce di piacere che lascerai per il cammino.", "Vicini o lontani, il piacere non si ferma mai!", "Pranzo di famiglia all'orizzonte? Rendilo più piccante, il piacere arriva quando meno te lo aspetti!"], "eng": ["Wear it under your skirt for a walk and find the way home through the pleasure droplets you'll leave along the path.", "Near, far, wherever you are, the pleasure does go on!", "Family lunch on the horizon? Make it spicier; pleasure arrives when you least expect it!"]}, "Dildo Strap On": {"ita": ["Ti ha chiesto di venire penetratə? Lubrifricante alla mano, Dildo Strap On alla vagi e tanta voglia di godere!", "Hai mai provato il pegging o la doppia penetrazione? Apri questa scatola e cogli la tua occasione!", "Quanto è eccitante invertire i ruoli? Prendi il controllo: stavolta comandi tu."], "eng": ["If they asked you to be penetrated, with lubricant at hand, Strap-On Dildo to the vagina, and a strong desire to enjoy, go for it!", "Have you ever tried pegging or double penetration? Open this box and seize your opportunity!", "How exciting is it to reverse the roles? Take control: this time, you're in charge."]}, "KIT BONDAGE": {"ita": ["Spogliati, indossa tutti gli accessori del Kit Bondage e sperimenta nuove pose per scatti piccantissimi.", "Voglia di andare a ballare? Arricchisci il tuo look con gli accessori del Kit Bondage. Non sai mai cosa potrebbe succedere all'after party!", "Frustino, manette e tanta fantasia: ecco lo starter pack per una serata all’insegna di giochi di ruolo e nuove scoperte.", "Vuoi sempre avere il controllo... ma oggi no! Cedi il comando al tuo partner, mettigli il kit in mano e chissà come andrà a finire!", "Chi è stato più cattivo? Gioca col tuo partner e fatti punire per le tue marachelle: scegli tu la safe word!"], "eng": ["Undress yourself, wear all the accessories from the Bondage Kit, and explore new positions for some sizzling shots.", "Feeling like going dancing? Enhance your look with the accessories from the Bondage Kit. You never know what might happen at the after-party!", "Whip, handcuffs, and lots of imagination: here's the starter pack for an evening filled with role-playing games and new discoveries.", "You always want to be in control... but not today! Let your partner take over control, put the kit in his hands... and who knows how it will turn out!", "Who's been naughtier? Play with your partner and get punished for your mischief: you choose the safe word!"]}, "MANETTE": {"ita": ["Chi è stato più cattivo? Gioca col tuo partner e fatti ammanettare per punirti delle tue marachelle. Invertite i ruoli per un twist ancora più sexy!", "Fatti ammanettare al letto e lascia che il tuo partner si dedichi al tuo piacere: sarà un gioco divertente, ma speriamo non come quello di Gerald.", "Vuoi sempre avere il controllo... ma non oggi! Il tuo partner sarà al comando e chissà dove finirà.", "Manette, cubetto di ghiaccio e tanta fantasia: ecco lo starter pack per una serata all’insegna di nuove scoperte."], "eng": ["Who has been naughty? Play with your partner and let yourself be handcuffed as punishment for your mischief. Reverse the roles for an even sexier twist!", "Allow yourself to be handcuffed to the bed and let your partner indulge in your pleasure: it will be a fun game, but hopefully not like Gerald's Game.", "You always want to be in control... but not today! Your partner will be in charge, and who knows where it will lead you.", "Handcuffs, ice cube and lots of imagination: here's the starter pack for an evening of new discoveries."]}, "PINZE CAPEZZOLI": {"ita": ["Sapevi che i capezzoli sono il clitoride del piano superiore? Baciali, leccali, lubrificali e stringili coi morsetti per un orgasmo ancora più intenso.", "Ancora, ancora e ancora: stringi i capezzoli per godere sempre di più!", "Un po' di dolore, un po' di piacere, è questo il gioco no? Non guardarli e basta, fai impazzire di piacere i tuoi capezzoli!"], "eng": ["Did you know that nipples are the clitoris of the upper floor? Kiss them, lick them, lubricate them, and squeeze them with nipple clamps for an even more intense orgasm.", "More, more, and more: squeeze your nipples to enjoy even more!", "A little pain, a little pleasure, that's the game, right? Don't just look at them, drive your nipples wild with pleasure!"]}, "FRUSTINI": {"ita": ["Sei statə cattivə? Sdraiati sulle sue ginocchia e fatti punire con delle sonore sculacciate.", "Colpiscimi, frustami, puniscimi... trattami come merito!", "Zorro non è l'unico che usa la frusta: cosa aspetti? Prendi in mano le redini del piacere.", "Vuoi sempre avere il controllo... ma oggi no! Cedi il comando al tuo partner, mettigli il frustino in mano e chissà come andrà a finire!"], "eng": ["Have you been naughty? Lay on their knees and let yourself be punished with some firm spanks.", "Hit me, whip me, punish me... treat me as I deserve!", "Zorro isn't the only one who uses a whip: what are you waiting for? Take control of pleasure in your hands.", "You always want to be in control... but not today! Let your partner take over control, put the whips in their hands... and who knows how it will turn out!"]}, "PADDLES": {"ita": ["Sei statə cattivə? Sdraiati sulle sue ginocchia e fatti punire con delle sonore sculacciate.", "Era \"Hit me baby one more time\" giusto? Allora non fermarti e rendimi tuə!", "Questa Paddle non è per lo sport, ma ti farà sudare a suon di sculacciate! Sei prontə per un allenamento piccante?", "Con il paddle in mano, ogni colpo è un applauso al tuo piacere!", "Passa al lato oscuro del piacere con noi, abbiamo il Paddle: un colpo, un orgasmo!"], "eng": ["Have you been naughty? Lay on their knees and let yourself be punished with some firm spanks.", "Was it \"Hit me baby one more time,\" right? Then don't stop and make me yours!", "This paddle isn't for sports, but it'll make you sweat with every smack! Are you ready for a spicy workout?", "With the paddle in hand, each hit is an applause for your pleasure!", "Join the dark side of pleasure with us, we have our Paddle: one strike, one orgasm!"]}, "MASCHERE SEXY": {"ita": ["Questa sera puoi essere chiunque vuoi: indossa la Maschera Sexy e dai sfogo alle tue fantasie!", "Fatti bendare e lascia che il tuo partner si dedichi al tuo godimento: non vedere amplierà notevolmente la percezione del tuo piacere.", "Una volta qualcuno disse: \"You can't see me!\" Ma sicuramente con questa Maschera Sexy potrai provare tutte le sensazioni possibili!"], "eng": ["Tonight, you can be anyone you want: wear the Sexy Mask and unleash your fantasies!", "Allow yourself to be blindfolded and let your partner focus on your pleasure: not seeing will greatly enhance your perception of pleasure.", "Once someone said, \"You can't see me!\" But surely with this Sexy Mask, you can experience all the possible sensations!"]}, "GAGBALL": {"ita": ["A volte il sesso è così bello che ti lascia a bocca aperta, perché non riempirla con una Gagball?", "Basta parlare, fai un po' di silenzio: goditi il momento e non aggiungere un'altra parola!", "Urlare di piacere è così bello, ma hai mai provato a farlo con una Gagball? Dagli una chance!"], "eng": ["Sometimes sex is so good that it leaves you speechless. Why not fill your mouth with a gagball?", "Enough talking, let's have some silence. Enjoy the moment and let there be no more words!", "Screaming with pleasure is amazing, but have you ever tried doing it with a gagball? Give it a chance!"]}, "CORDE BONDAGE": {"ita": ["Braccia, gambe, petto, legami tutto! Ogni restrizione sarà un brivido di piacere!", "Supera i tuoi limiti: lascia che il tuo partner leghi il tuo corpo!", "Tu, la tua stanza, il tuo partner, delle candele... e delle Corde Bondage: il mix perfetto per una notte di sottomissione!", "TOY IN VETRO (dildo, vibratori, wand e plug)", "Non è lo specchio delle tue brame ma è sempre in vetro e sicuramente ti mostrerà chi gode di più! Basta chiederlo ai tuoi Toy in Vetro!", "Chiedilə di salire da te e poi mostralə la tua straordinaria collezione di Toy in Vetro: rimarrà estasiatə!", "Caldo, freddo? Il sesso è proprio capriccioso! Raddredda o riscalda il Toy in Vetro e preparati a un intrigante gioco di sensazioni."], "eng": ["Arms, legs, chest, bondage it all! Every restraint will be a thrill of pleasure!", "Push your boundaries: let your partner tie up your body!", "You, your room, your partner, some candles... and some Bondage Ropes: the perfect mix for a night of submission!", "GLASS TOYS", "Mirror, mirror on the wall... well, it's not a mirror, but being made of glass, it will surely show you who enjoys it the most! Just ask your Glass Toys!", "Ask them to come up to your place and then show them your extraordinary collection of Glass Toys. They will be amazed!", "Hot, cold? Sex can be quite unpredictable! Heat up or cool down your Glass Toy and get ready for an intriguing temperature play."]}, "MUTANDINE VIBRANTI": {"ita": ["Intimo sexy e orgasmo a portata di mano? Le Mutandine Vibranti fanno al caso tuo. Indossale dove vuoi e via libera al piacere.", "Chi vuole essere sexy e bagnat* allo stesso tempo?", "Pizzo, cotone, qualsiasi materiale va bene, l'importante è che ti facciano godere!", "Indossala e lascia il telecomando al partner: sarà ləi a decidere quando farti vibrare mentre è dentro di te!"], "eng": ["Sexy lingerie and orgasm at your fingertips? Vibrating panties are perfect for you. Wear them wherever you want and unleash the pleasure.", "Who wants to be sexy and wet at the same time?", "Lace, cotton, any material will do, the important thing is that they make you enjoy!", "Put it on and leave the remote control to your partner: they will decide when to vibrate while they are inside you!"]}, "Giochi erotici": {"ita": ["Credi nel cuore delle carte: gioca la partita, domina la fica! O qualsiasi genitale tu voglia con questi fantastici Giochi Erotici!", "Vuoi lanciare un d20? Non con questi Giochi Erotici! Lancia il dado, gioca la carta e dai via al piacere con chi vuoi tu!", "Con i nostri Giochi Erotici un +4 o un +2 non rovinano amicizie, anzi! Invita quante persone vuoi per una serata di vero godimento!"], "eng": ["Believe in the heart of the cards: play the game, dominate the pleasure! Whether it's the pussy or any other genital you desire, do it with these fantastic Erotic Games!", "Want to roll a d20? Not with these Erotic Games! Roll the dice, play the card, and unleash pleasure with whomever you desire!", "With our Erotic Games, a +4 or a +2 won't ruin friendships, in fact! Invite as many people as you want for an evening of true enjoyment!"]}, "Toy con app": {"ita": ["A chilometri di distanza o nello stesso letto, l’unica cosa che vi divide è la batteria del telefono: tienila carica e godi con l'applicazione!", "Attenzione! Non serve un GPS, il tuo partner sa sempre dove colpire: accendi l'app, vibra e segui il piacere!"], "eng": ["Miles apart or in the same bed, the only thing between you is your phone's battery: keep it charged and enjoy with the app!", "Attention! No GPS needed—your partner always knows where to hit: turn on the app, vibe, and follow the pleasure!"]}, "VESTITI SEXY": {"ita": ["Indossalo sotto i vestiti in una normale serata fuori: quando le cose si faranno interessanti sarà una piacevole sorpresa...", "Indossalo e fatti offrire un massaggio sensuale: la stoffa sul corpo farà il resto."], "eng": ["Wear it under your clothes on a normal night out: when things get interesting, it'll be a pleasant surprise…", "Wear it and let yourself be treated to a sensual massage: the fabric on your body will do the rest."]}, "VADEMECUM DEL BUON PRESERVATIVO": {"ita": ["Mettilo prima di farlo! Indossarlo a giochi già iniziati non ti proteggerà da infezioni sessualmente trasmissibili o da gravidanze indesiderate.", "Trattalo bene! Tienilo lontano dal caldo, non metterlo nel portafoglio, non aprirlo coi denti o con le forbici per evitare di danneggiarlo.", "Lubrificalo! Usalo con dei lubrificanti a base acqua o silicone, mai con vaselina, creme o lubrificanti a base olio.", "Uno è abbastanza! Usarne due insieme non protegge di più, anzi, è più facile lacerarli!", "Cambialo se da dietro passi a davanti! Lì dietro ci sono batteri che non vorresti mai portare altrove.", "Salutalo per bene! Dopo averlo usato, mettilo nell’indifferenziata: mai nel WC o nella plastica!"], "eng": []}, "Pistola Massaggiante": {"ita": ["Portala sempre con te: viaggi in treno, scrivanie scomode e stress non ti spaventeranno più!", "Regala un momento di piacere al tuo partner: sciogli le sue contratture nei punti più difficili da raggiungere.", "Che tu faccia ginnastica in palestra o in camera da letto, questo massaggiatore è il tuo fido alleato per il rilassamento muscolare!"], "eng": ["Always keep it with you: train rides, uncomfortable desks, and stress will never scare you again!", "Give your partner a moment of pure pleasure: melt away their tension, even in those hard-to-reach spots.", "Whether you're working out at the gym or in the bedroom, this massage gun is your loyal ally for ultimate muscle relaxation!"]}, "Stampini per ghiaccio": {"ita": ["Gioca con le temperature: passalo sulla pelle in una giornata caldissima.", "I tuoi drink non sono mai stati così freschi... e piccanti!"], "eng": ["Play with temperatures: slide it over your skin on a scorching hot day.", "Your drinks have never been this cool… and this spicy!"]}, "Dilatatori vaginali": {"ita": ["Ideali se soffri di alcune patologie del dolore (ad esempio: vulvodinia, vaginismo)", "Aumentano la consapevolezza del proprio corpo incrementando il desiderio sessuale"], "eng": ["Ideal if you suffer from certain pain conditions (e.g., vulvodynia, vaginismus)", "They increase awareness of your body, enhancing sexual desire"]}, "Cuscino": {"ita": ["Angoli impossibili? Posizioni da circo? Con questo cuscino anche tu puoi fare lo stesso show!", "Mettilo sotto i fianchi e scopri un'inclinazione che non sapevi di volere: il Punto G ti ringrazierà.", "Più comodə, più rilassatə, più goduria: perché spezzarsi la schiena quando puoi avere il supporto giusto al momento giusto?"], "eng": ["Impossible angles? Circus-worthy positions? With this pillow, even you can put on the same show!", "Slide it under your hips and discover an angle you didn't know you needed: your G-spot will thank you.", "More comfortable, more relaxed, more pleasure: why throw your back out when you can have the right support at the right moment?"]}}
+;
+
+// ── SMALTIMENTO MATERIALI MAP ────────────────────────────────────
+const SMALTIMENTO_MAP = {
+  'PAP21': { label: 'PAP 21 (Cartone)', desc: 'codice PAP 21 per cartone/carta, spesso con simbolo frecce riciclo' },
+  'PAP22': { label: 'PAP 22 (Carta)', desc: 'codice PAP 22 per carta' },
+  'CPE07': { label: 'CPE 07 (Plastica PE)', desc: 'codice CPE 07 o PE 07 per plastica polietilene' },
+  'PP05':  { label: 'PP 05 (Polipropilene)', desc: 'codice PP 05 per polipropilene' },
+  'PET01': { label: 'PET 01', desc: 'codice PET 01 per PET' },
+  'GL70':  { label: 'GL 70 (Vetro)', desc: 'codice GL 70 per vetro' },
+  'ALU41': { label: 'ALU 41 (Alluminio)', desc: 'codice ALU 41 per alluminio' },
+};
+
+// ── STATE ────────────────────────────────────────────────────────
+let mapping  = {};   // EAN → 'elettrico' | 'non elettrico'
+let pdfFiles = [];   // [{ file, ean, docType, id }]
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function findEANInFilename(filename) {
+  for (const ean of Object.keys(mapping)) {
+    if (filename.includes(ean)) return ean;
+  }
+  return null;
+}
+
+function docTypeFromMapping(ean) {
+  const val = mapping[ean];
+  if (!val) return null;
+  const t = val.type.toLowerCase();
+  // Elettrico: prodotti CON motore (ricaricabile o pile) o telecomando — NON "senza motore"
+  const isElettrico = (t.includes('con motore') || t.includes('telecomando') || t === 'elettrico') && !t.includes('senza');
+  return isElettrico ? 'packaging_el' : 'packaging_non_el';
+}
+
+function getProductInfo(ean) {
+  const val = mapping[ean];
+  if (!val) return null;
+  const clean = (v) => {
+    if (!v || String(v).toUpperCase() === 'NAN' || String(v).toUpperCase() === 'N/A' || String(v).trim() === '') return '';
+    return String(v).trim();
+  };
+  // Override val fields with cleaned versions
+  Object.keys(val).forEach(k => { val[k] = clean(val[k]); });
+  return {
+    impermeabilita: val.impermeabilita,
+    materiale:      val.materiale,
+    ricarica:       val.ricarica,
+    altezza:        val.altezza,
+    diametro:       val.diametro,
+    vibrazioni:     val.vibrazioni,
+    velocita:       val.velocita,
+    suzione:        val.suzione,
+    tapping:        val.tapping,
+    rotazione:      val.rotazione,
+    strap_on:       val.strap_on,
+    funzione_extra: val.funzione_extra,
+    product_name:   val.product_name,
+    asin:           val.asin,
+    sexyIdeas:      null,
+  };
+}
+
+function getSmaltimento(ean) {
+  const val = mapping[ean];
+  if (!val) return null;
+  const clean = (v) => {
+    if (!v || v === 'NAN' || v === 'N/A' || v === 'NA' || v.trim() === '') return null;
+    return v.trim();
+  };
+  return {
+    scatola:   clean(val.smalt_scatola),
+    sacchetto: clean(val.smalt_sacchetto),
+    doypack:   clean(val.smalt_doypack),
+  };
+}
+
+function getChecklist(docType) {
+  const isEl = docType === 'packaging_el';
+  const items = [];
+  for (const [section, fields] of Object.entries(SECTIONS)) {
+    const relevant = fields.filter(f => isEl ? f.pack_el : f.pack_non_el);
+    if (relevant.length) items.push({ section, fields: relevant });
+  }
+  return items;
+}
+
+function buildPrompt(docType, checklist, productInfo, smaltimento, isAmazon) {
+  const docLabel = docType === 'packaging_el' ? 'Packaging di prodotto ELETTRICO' : 'Packaging di prodotto NON ELETTRICO';
+  const itemList = checklist.flatMap(g => g.fields).map(f => `- ${f.id}: "${f.label}"`).join('\n');
+  // Add ASIN check for Amazon packs
+  const asinItem = (isAmazon && productInfo && productInfo.asin)
+    ? `\n- asin_ok: "Codice ASIN Amazon — cerca barcode con codice alfanumerico ESATTO: ${productInfo.asin} (diverso dall'EAN a 13 cifre). found: true solo se corrisponde esattamente."`
+    : '';
+
+  let productSection = '';
+  if (productInfo) {
+    const checks = [];
+    if (productInfo.impermeabilita) checks.push(`- impermeabilita_ok: Trova la scritta IPX sul packaging e leggi il numero. Valore atteso: ${productInfo.impermeabilita}. Regola ASSOLUTA: se vedi ${productInfo.impermeabilita} → {"found": true, "note": "Trovato ${productInfo.impermeabilita}"}. Se vedi altro valore → {"found": false, "note": "Trovato XXXXX"}. NESSUN ragionamento o correzione permessa.`);
+    if (productInfo.materiale) checks.push(`- materiale_ok: verifica che sia indicato il materiale "${productInfo.materiale}"`);
+    if (productInfo.ricarica) checks.push(`- ricarica_ok: verifica che sia indicata la modalità di ricarica "${productInfo.ricarica}"`);
+    if (productInfo.altezza) checks.push(`- dimensioni_ok: verifica che siano indicate dimensioni coerenti con Lunghezza ${productInfo.altezza}cm e Diametro ${productInfo.diametro}cm`);
+    if (productInfo.vibrazioni) checks.push(`- vibrazioni_ok: verifica che sia indicato il numero di vibrazioni/livelli di vibrazione uguale a ${productInfo.vibrazioni}`);
+    if (productInfo.velocita) checks.push(`- velocita_ok: verifica che sia indicato il numero di velocità/livelli di intensità uguale a ${productInfo.velocita}`);
+    if (productInfo.suzione) checks.push(`- suzione_ok: verifica che sia indicato il numero di modalità suzione uguale a ${productInfo.suzione}`);
+    if (productInfo.tapping) checks.push(`- tapping_ok: verifica che sia indicato il numero di modalità tapping uguale a ${productInfo.tapping}`);
+    if (productInfo.rotazione) checks.push(`- rotazione_ok: verifica che sia indicato il numero di modalità rotazione uguale a ${productInfo.rotazione}`);
+    if (productInfo.strap_on && String(productInfo.strap_on) === '1') checks.push(`- strap_on_ok: verifica che sia presente l'icona o indicazione di compatibilità strap-on`);
+    if (productInfo.funzione_extra && productInfo.funzione_extra.toLowerCase().includes('riscald')) checks.push(`- riscaldante_ok: verifica che sia presente l'icona o indicazione della funzione riscaldante`);
+    // ASIN solo per pack Amazon
+    if (isAmazon && productInfo.asin) checks.push(`- asin_ok: OBBLIGATORIO per versioni Amazon. Cerca sul packaging un secondo barcode (diverso dall'EAN a 13 cifre) con sotto un codice alfanumerico. Valore atteso ESATTO: "${productInfo.asin}". Confronta carattere per carattere. found: true SOLO se corrisponde esattamente. Se non trovi il codice: found: false.`);
+    if (checks.length > 0) productSection = `\n\nVERIFICA INFO PRODOTTO (aggiungi al JSON results):\n${checks.join('\n')}`;
+  }
+
+  let smaltSection = '';
+  if (smaltimento) {
+    const checks = [];
+    if (smaltimento.scatola) checks.push(`- smalt_scatola_ok: verifica che il codice "${smaltimento.scatola}" sia visibile da qualsiasi parte del packaging. Non importa dove è posizionato o a quale componente è associato. Accetta anche varianti di formato (es. "PAP 21", "PAP21", "21 PAP" sono tutti equivalenti). found: true se il codice è presente.`);
+    if (smaltimento.sacchetto) checks.push(`- smalt_sacchetto_ok: verifica che il codice "${smaltimento.sacchetto}" sia visibile da qualsiasi parte del packaging. Non importa dove è posizionato o a quale componente è associato. Accetta varianti di formato (es. "CPE 7", "CPE07", "7 CPE" sono tutti equivalenti). found: true se il codice è presente.`);
+    if (smaltimento.doypack) checks.push(`- smalt_doypack_ok: verifica che il codice "${smaltimento.doypack}" sia visibile da qualsiasi parte del packaging. Accetta varianti di formato. found: true se il codice è presente.`);
+    // Always add TRIMAN content check
+    const mats = [smaltimento.scatola, smaltimento.sacchetto, smaltimento.doypack].filter(Boolean).join(', ');
+    const matsDesc = [];
+    if (smaltimento.scatola) matsDesc.push(`scatola/cartone (${smaltimento.scatola})`);
+    if (smaltimento.sacchetto) matsDesc.push(`sacchetto igienico/plastica (${smaltimento.sacchetto})`);
+    if (smaltimento.doypack) matsDesc.push(`doypack (${smaltimento.doypack})`);
+    if (matsDesc.length > 0) {
+      checks.push(`- triman_contenuto_ok: il riquadro TRIMAN (FR) deve contenere esattamente ${matsDesc.length} icona/e corrispondenti ai materiali: ${matsDesc.join(' + ')}. Verifica che ci sia un'icona specifica per ogni materiale elencato. found: true solo se il numero di icone e i materiali rappresentati corrispondono esattamente. Nella note descrivi le icone effettivamente viste e indica se manca qualcosa.`);
+    } else {
+      checks.push(`- triman_contenuto_ok: verifica se il riquadro TRIMAN (FR) è presente sul packaging. Se presente: found: true con nota "TRIMAN presente ma codici smaltimento non disponibili nel mapping — verificare manualmente il contenuto". Se assente: found: false.`);
+    }
+    if (checks.length > 0) smaltSection = `\n\nVERIFICA CODICI SMALTIMENTO E TRIMAN (aggiungi al JSON results):\n${checks.join('\n')}\nI codici sono vicino ai simboli frecce riciclo nella sezione inferiore.`;
+  }
+
+  let sexySection = '';
+  if (isAmazon) {
+    const asinCheck = (productInfo && productInfo.asin)
+      ? ''
+      : '';
+    sexySection = `\n\nSEXY IDEAS: versione AMAZON, sexy ideas non previste. Aggiungi: sexy_ideas_ok: { "found": true, "note": "Versione Amazon" }`;
+  } else if (productInfo) {
+    // Find matching sexy ideas category from SEXY_IDEAS
+    const allCategories = Object.keys(SEXY_IDEAS);
+    const catList = allCategories.map(c => `"${c}"`).join(', ');
+    let ideasSection = '';
+    // Pass all categories so model can pick the right one
+    // Sexy ideas check è separato - non incluso nel prompt principale
+    sexySection = ''; // handled by separate API call
+  }
+
+  return `Sei un esperto di compliance per packaging di prodotti consumer europei.
+
+Analizza questa immagine di un ${docLabel} e verifica ogni elemento.
+
+Rispondi SOLO con JSON:
+{
+  "results": {
+    "id_elemento": { "found": true/false, "note": "nota opzionale" }
+  }
+}
+
+Elementi compliance:
+${itemList}${asinItem}
+
+IMPORTANTE: Se ricevi un blocco 'TESTO ESTRATTO DAL PDF', usalo come fonte primaria per tutti i check testuali (IPX, ASIN, dimensioni, materiale, ricarica, codici smaltimento, lotto, indirizzo, ecc.) — è più affidabile della lettura visiva. Usa le immagini per verificare i simboli grafici (CE, RAEE, TRIMAN, ecc.).
+
+IMPORTANTE: Ricevi 2 immagini dello stesso packaging:
+1. Il packaging intero (visione generale)
+2. Una griglia 2x2 ad alta risoluzione con i 4 quadranti del packaging ingranditi
+
+Analizza ENTRAMBE con attenzione. La zona compliance/legale (con TRIMAN, RAEE, CE, PAP/CPE, simboli spagnoli, indirizzo) può trovarsi in QUALSIASI parte del packaging — base, retro, lato. Cerca ogni simbolo in tutte le zone prima di concludere che è assente.
+
+Note visive sui simboli:
+- simbolo_triman: Il TRIMAN è una figura stilizzata di persona con tre frecce circolari (Möbius) dentro un riquadro, con icone imballaggio (scatola+bidone) collegate da '+'. Si trova SEMPRE nella sezione compliance/legale vicino a PAP/CPE. Può essere di qualsiasi colore — bianco su viola, bianco su azzurro, bianco su teal, nero su bianco. La scritta FR è minuscola, non necessaria per identificarlo. Se nella sezione compliance vedi un riquadro con figura persona+frecce riciclo+icone imballaggio in qualsiasi colore, metti found: true.
+- triman_contenuto_ok: se simbolo_triman è true, verifica che le icone dentro corrispondano ai materiali del mapping indicati nella sezione VERIFICA CODICI SMALTIMENTO. Se simbolo_triman è false, metti found: false.
+- smalt_scatola_ok / smalt_sacchetto_ok / smalt_doypack_ok: verifica che i codici siano visibili sul packaging in qualsiasi posizione. Accetta varianti di formato (PAP21=PAP 21=21 PAP, CPE07=CPE 7=7 CPE).
+- simbolo_smalt_spagnolo: due riquadri impilati con testo spagnolo — "Al Azul/Envase Cartón" per il cartone e "Al Amarillo/Envase Plástico" per la plastica. I materiali devono corrispondere ai codici del mapping. found: true se entrambi presenti e corretti.
+- simbolo_garanzia: cerca un simbolo di scudo/checkmark con testo "Garanzia 2 anni" o "2 years warranty". Si trova solitamente nella sezione icone caratteristiche del prodotto.
+- simbolo_manuale: cerca un simbolo di libro aperto con una "i" (informazioni). Può essere molto piccolo, si trova nella sezione compliance vicino a CE, RAEE.
+- nome_importatore/indirizzo_importatore: true se presente "Prodotto e importato da" o "Imported by"${productSection}${smaltSection}${sexySection}
+
+Regole:
+- found: true solo se chiaramente visibile
+- NON ragionare sull'obbligatorietà di nessun simbolo — verifica solo se è presente o no
+- nome_importatore: found TRUE se vedi il nome di qualsiasi azienda/società sul packaging, anche se è il fabbricante stesso
+- indirizzo_importatore: found TRUE se vedi "Prodotto e importato da", "Importato da", "Imported by", "Produit et importé par" OPPURE se il fabbricante e importatore coincidono e c'è già un indirizzo presente. NON richiedere un importatore separato.
+- simbolo_raee: il simbolo RAEE è un bidone della spazzatura con una X o barra trasversale sopra. È un simbolo STANDALONE separato dal TRIMAN — NON è il bidone dentro il riquadro FR. Si trova tipicamente nella stessa riga di CE e UKCA, all'inizio della sezione compliance. Il bidone RAEE ha sempre una barra o X sopra che lo barra. Può essere bianco su sfondo colorato o nero su sfondo chiaro. Nella sezione compliance guarda la riga di simboli in cima (manuale, bidone barrato, CE, UKCA) — il bidone barrato in quella riga è il RAEE. found: true se lo vedi.
+- Simbolo spagnolo: icone Al Azul/Envase Cartón e Al Amarillo/Envase Plástico
+- Rispondi SOLO con JSON`;
+}
+
+// ── LOAD MAPPING ─────────────────────────────────────────────────
+async function loadMapping(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const map = {};
+        for (const row of rows) {
+          const eanKey  = Object.keys(row).find(k => k.toLowerCase().includes('ean'));
+          const typeKey = Object.keys(row).find(k => k.toLowerCase().includes('attribute') || k.toLowerCase().includes('set'));
+          if (!eanKey || !typeKey) continue;
+          const ean = String(row[eanKey]).trim();
+          if (!ean) continue;
+          const n = (v) => { const s = String(v || '').trim(); return (s === 'nan' || s === 'NaN' || s === '') ? '' : s; };
+          map[ean] = {
+            type:           String(row[typeKey]).trim().toLowerCase(),
+            impermeabilita: n(row['Impermeabilità'] || row['Impermeabilita']),
+            materiale:      n(row['Materiale']),
+            ricarica:       n(row['Modalità di ricarica'] || row['Modalita di ricarica']),
+            altezza:        n(row['Lunghezza (cm)'] || row['Altezza (cm)'] || row['Altezza']),
+            diametro:       n(row['Diametro (cm)'] || row['Diametro']),
+            smalt_scatola:  n(row['Smaltimento - scatola']).toUpperCase(),
+            smalt_sacchetto:n(row['Smaltimento - sacchetto igienico']).toUpperCase(),
+            smalt_doypack:  n(row['Smaltimento - doypack']).toUpperCase(),
+            vibrazioni:     n(row['Livelli di vibrazione']),
+            velocita:       n(row['Livelli di intensità'] || row['Livelli di velocita']),
+            suzione:        n(row['Livelli di suzione']),
+            tapping:        n(row['Livelli di tapping']),
+            rotazione:      n(row['Livelli di rotazione']),
+            strap_on:       n(row['Strap-on compatibile']),
+            funzione_extra: n(row['Funzione extra']),
+            product_name:   n(row['Product Name']),
+            asin:           n(row['ASIN'] || row['Asin'] || row['asin']),
+          };
+        }
+        res(map);
+      } catch(err) { rej(err); }
+    };
+    reader.onerror = rej;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── DOM REFS ─────────────────────────────────────────────────────
+const inputMapping = document.getElementById('input-mapping');
+const inputFolder  = document.getElementById('input-folder');
+const runBtn       = document.getElementById('run-btn');
+const results      = document.getElementById('results');
+const apiKeyEl     = document.getElementById('api-key');
+// Nascondi campo API key se gestita dal server
+if (window.API_KEY_MANAGED) {
+  const apiSection = document.getElementById('api-section');
+  if (apiSection) apiSection.style.display = 'none';
+}
+
+const dzMapping    = document.getElementById('dz-mapping');
+const dzFolder     = document.getElementById('dz-folder');
+
+// ── MAPPING LOAD ─────────────────────────────────────────────────
+// Permetti di ricaricare il mapping e la cartella cliccando di nuovo
+dzMapping.addEventListener('click', () => { inputMapping.value = ''; });
+dzFolder.addEventListener('click', () => { inputFolder.value = ''; });
+
+// File singoli
+const inputFiles = document.getElementById('input-files');
+const btnFiles = document.getElementById('btn-files');
+if (btnFiles && inputFiles) {
+  btnFiles.addEventListener('click', () => inputFiles.click());
+  inputFiles.addEventListener('change', e => {
+    const files = [...e.target.files].filter(f => /\.(pdf|png|jpg|jpeg)$/i.test(f.name) && !f.name.startsWith('.'));
+    processPDFList(files);
+    inputFiles.value = '';
+  });
+}
+
+inputMapping.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    mapping = await loadMapping(file);
+    document.getElementById('mapping-status').textContent = `✓ ${Object.keys(mapping).length} EAN caricati`;
+    dzMapping.classList.add('done');
+    renderMappingPreview();
+    if (pdfFiles.length) matchAndPreview();
+    updateRunBtn();
+  } catch(err) {
+    document.getElementById('mapping-status').textContent = '✗ Errore lettura file';
+  }
+});
+
+['dragover','dragleave','drop'].forEach(ev => {
+  dzMapping.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'dragover') dzMapping.classList.add('drag');
+    if (ev === 'dragleave') dzMapping.classList.remove('drag');
+    if (ev === 'drop') {
+      dzMapping.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f) handleMappingFile(f);
+    }
+  });
+});
+
+async function handleMappingFile(file) {
+  try {
+    mapping = await loadMapping(file);
+    document.getElementById('mapping-status').textContent = `✓ ${Object.keys(mapping).length} EAN caricati`;
+    dzMapping.classList.add('done');
+    renderMappingPreview();
+    if (pdfFiles.length) matchAndPreview();
+    updateRunBtn();
+  } catch(err) {
+    document.getElementById('mapping-status').textContent = '✗ Errore lettura file';
+  }
+}
+
+// ── FOLDER LOAD ──────────────────────────────────────────────────
+inputFolder.addEventListener('change', e => {
+  processPDFList([...e.target.files].filter(f => /\.(pdf|png|jpg|jpeg)$/i.test(f.name)));
+});
+
+['dragover','dragleave','drop'].forEach(ev => {
+  dzFolder.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'dragover') dzFolder.classList.add('drag');
+    if (ev === 'dragleave') dzFolder.classList.remove('drag');
+    if (ev === 'drop') {
+      dzFolder.classList.remove('drag');
+      readDroppedFolder(e.dataTransfer.items);
+    }
+  });
+});
+
+function readDroppedFolder(items) {
+  const fileList = [];
+  let pending = 0;
+
+  function processEntry(entry, path) {
+    if (entry.isFile && /\.(pdf|png|jpg|jpeg)$/i.test(entry.name) && !entry.name.startsWith('._') && !entry.name.startsWith('.')) {
+      pending++;
+      entry.file(f => {
+        Object.defineProperty(f, 'webkitRelativePath', { value: path + f.name, writable: false, configurable: true });
+        fileList.push(f);
+        pending--;
+        if (pending === 0) processPDFList(fileList);
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      pending++;
+      function readAll() {
+        reader.readEntries(entries => {
+          if (entries.length === 0) { pending--; if (pending === 0) processPDFList(fileList); return; }
+          for (const sub of entries) processEntry(sub, path + entry.name + '/');
+          readAll();
+        });
+      }
+      readAll();
+    }
+  }
+
+  for (const item of [...items]) {
+    const entry = item.webkitGetAsEntry();
+    if (entry) processEntry(entry, '');
+  }
+  if (pending === 0) processPDFList(fileList);
+}
+
+function processPDFList(files) {
+  // Filtra file nascosti macOS (._filename) e file non supportati
+  const supported = files.filter(f => 
+    !f.name.startsWith('._') && 
+    !f.name.startsWith('.') &&
+    /\.(pdf|png|jpg|jpeg)$/i.test(f.name)
+  );
+  pdfFiles = supported.map(f => {
+    const ean = findEANInFilename(f.name) || findEANInFilename(f.webkitRelativePath || '');
+    return { file: f, ean, docType: null, id: Math.random().toString(36).slice(2) };
+  });
+  document.getElementById('folder-status').textContent = `✓ ${pdfFiles.length} file rilevati`;
+  dzFolder.classList.add('done');
+  if (Object.keys(mapping).length) matchAndPreview();
+  else renderFilePreview();
+  updateRunBtn();
+}
+
+apiKeyEl.addEventListener('input', updateRunBtn);
+
+// ── MATCH & PREVIEW ──────────────────────────────────────────────
+function matchAndPreview() {
+  for (const item of pdfFiles) {
+    item.docType     = item.ean ? docTypeFromMapping(item.ean) : null;
+    item.productInfo = item.ean ? getProductInfo(item.ean) : null;
+    item.smaltimento = item.ean ? getSmaltimento(item.ean) : null;
+  }
+  renderMappingPreview();
+  renderFilePreview();
+  updateRunBtn();
+}
+
+function renderMappingPreview() {
+  const preview = document.getElementById('mapping-preview');
+  const grid    = document.getElementById('mapping-grid');
+  if (!Object.keys(mapping).length) { preview.style.display = 'none'; return; }
+  preview.style.display = 'block';
+  const entries = Object.entries(mapping).slice(0, 8);
+  grid.innerHTML = entries.map(([ean, val]) => {
+    const type = typeof val === 'object' ? val.type : val;
+    const isEl = !type.includes('non');
+    return `<span class="mapping-ean">${ean}</span>
+            <span style="color:var(--text-dim);font-size:12px">${type}</span>
+            <span class="mapping-badge ${isEl ? 'badge-el' : 'badge-non-el'}">${isEl ? 'elettrico' : 'non el.'}</span>`;
+  }).join('');
+  if (Object.keys(mapping).length > 8) {
+    grid.innerHTML += `<span style="color:var(--text-muted);font-size:11px;grid-column:1/-1;margin-top:6px">+ altri ${Object.keys(mapping).length - 8} EAN</span>`;
+  }
+}
+
+function renderFilePreview() {
+  const preview = document.getElementById('file-preview');
+  const list    = document.getElementById('file-preview-list');
+  const title   = document.getElementById('file-preview-title');
+  if (!pdfFiles.length) { preview.style.display = 'none'; return; }
+
+  const matched   = pdfFiles.filter(f => f.docType).length;
+  const unmatched = pdfFiles.length - matched;
+  title.textContent = `${pdfFiles.length} file rilevati — ${matched} con match${unmatched ? `, ${unmatched} senza` : ''}`;
+  preview.style.display = 'block';
+
+  list.innerHTML = pdfFiles.map(item => {
+    const hasMatch  = !!item.docType;
+    const typeLabel = item.docType === 'packaging_el' ? 'Elettrico' : item.docType === 'packaging_non_el' ? 'Non Elettrico' : '—';
+    return `<div class="file-row">
+      <span class="file-row-name">${item.file.name}</span>
+      <span class="file-row-ean">${item.ean || 'EAN non trovato'}</span>
+      <span class="tag-match ${hasMatch ? 'tag-ok' : 'tag-no-match'}">${hasMatch ? typeLabel : 'No match'}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateRunBtn() {
+  const hasKey = window.API_KEY_MANAGED || apiKeyEl.value.trim();
+  runBtn.disabled = !(
+    hasKey &&
+    pdfFiles.length > 0 &&
+    Object.keys(mapping).length > 0 &&
+    pdfFiles.some(f => f.docType)
+  );
+}
+
+// ── API CALL ─────────────────────────────────────────────────────
+async function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function checkSexyIdeas(item, apiKey, contentBlock) {
+  // Step 1: identifica le frasi sul packaging (prompt corto)
+  const catNames = Object.keys(SEXY_IDEAS).join(', ');
+  const step1Prompt = 'Guarda il packaging. Trova la sezione "SEXY IDEAS" e trascrivi le frasi che vedi in italiano e inglese. ' +
+    'Rispondi SOLO con JSON: {"ita": ["frase1", "frase2"], "eng": ["frase1", "frase2"]}. ' +
+    'Se non c\u0027e\u0027 una sezione SEXY IDEAS: {"ita": [], "eng": []}';
+
+  const r1 = await fetch(window.SERVER_URL || 'http://localhost:8081/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: [ contentBlock, { type: 'text', text: step1Prompt } ] }]
+    })
+  });
+
+  if (!r1.ok) { const e = await r1.json(); throw new Error(e.error?.message || 'HTTP ' + r1.status); }
+  const d1 = await r1.json();
+  const t1 = d1.content.find(b => b.type === 'text')?.text || '{}';
+  const m1 = t1.match(/\{[\s\S]*\}/);
+  const foundPhrases = JSON.parse(m1 ? m1[0] : '{"ita":[],"eng":[]}');
+
+  if (!foundPhrases.ita?.length && !foundPhrases.eng?.length) {
+    return {
+      sexy_ideas_ok: { found: false, note: 'Sezione SEXY IDEAS non trovata sul packaging' },
+      sexy_ideas_categoria: { found: false, note: '' }
+    };
+  }
+
+  // Step 2: confronta le frasi trovate con le categorie (senza immagine, solo testo)
+  let catsText = '';
+  for (const cat of Object.keys(SEXY_IDEAS)) {
+    const ideas = SEXY_IDEAS[cat];
+    catsText += '"' + cat + '": ITA[' + ideas.ita.slice(0,2).join(' / ') + '] ENG[' + ideas.eng.slice(0,2).join(' / ') + ']\n';
+  }
+
+  const step2Prompt = 'Frasi trovate sul packaging:\n' +
+    'ITA: ' + foundPhrases.ita.join(' | ') + '\n' +
+    'ENG: ' + foundPhrases.eng.join(' | ') + '\n\n' +
+    'Categorie disponibili:\n' + catsText +
+    '\nA quale categoria corrispondono? Rispondi SOLO con JSON: ' +
+    '{"categoria": "nome categoria", "match": true/false, "note": "spiegazione"}';
+
+  const r2 = await fetch(window.SERVER_URL || 'http://localhost:8081/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: [{ type: 'text', text: step2Prompt }] }]
+    })
+  });
+
+  if (!r2.ok) { const e = await r2.json(); throw new Error(e.error?.message || 'HTTP ' + r2.status); }
+  const d2 = await r2.json();
+  const t2 = d2.content.find(b => b.type === 'text')?.text || '{}';
+  const m2 = t2.match(/\{[\s\S]*\}/);
+  const result = JSON.parse(m2 ? m2[0] : '{}');
+
+  return {
+    sexy_ideas_ok: { found: result.match === true, note: result.note || '' },
+    sexy_ideas_categoria: { found: true, note: result.categoria || '' }
+  };
+}
+
+async function checkFile(item, apiKey) {
+  const checklist = getChecklist(item.docType);
+
+  // Attach sexy ideas based on packaging type detected by model
+  // We pass ALL sexy ideas categories so the model can match the product type
+  const productInfo = item.productInfo ? {
+    ...item.productInfo,
+    sexyIdeasAll: SEXY_IDEAS  // pass all categories, model picks the right one
+  } : null;
+
+  // Build enriched productInfo with sexyIdeas for prompt
+  const productInfoForPrompt = productInfo ? {
+    impermeabilita: productInfo.impermeabilita,
+    materiale:      productInfo.materiale,
+    ricarica:       productInfo.ricarica,
+    altezza:        productInfo.altezza,
+    diametro:       productInfo.diametro,
+    asin:           productInfo.asin,
+    sexyIdeas:      null  // model will detect product type and match from SEXY_IDEAS
+  } : null;
+
+  const isAmazon = item.file.name.toUpperCase().includes('AMAZON');
+  const prompt = buildPrompt(item.docType, checklist, productInfoForPrompt, item.smaltimento, isAmazon) +
+    (productInfo ? `
+
+Per le SEXY IDEAS: identifica autonomamente il tipo di prodotto dal packaging, poi verifica che le frasi presenti corrispondano a quelle della categoria corretta. Le categorie disponibili sono: ${Object.keys(SEXY_IDEAS).join(', ')}. Aggiungi al JSON: sexy_ideas_categoria (la categoria identificata), sexy_ideas_ok (true/false), sexy_ideas_note (frasi trovate o mancanti).` : '');
+
+  const b64       = await fileToBase64(item.file);
+  const isImg     = /\.(png|jpg|jpeg)$/i.test(item.file.name);
+  const mediaType = isImg ? (item.file.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg') : 'application/pdf';
+  const contentBlock = isImg
+    ? { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } }
+    : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } };
+
+  // Mock mode — restituisce JSON finto per testare UI
+  const mockMode = document.getElementById('mock-mode')?.checked;
+  if (mockMode) {
+    const mockResults = {};
+    checklist.flatMap(g => g.fields).forEach(f => { mockResults[f.id] = { found: true, note: 'MOCK' }; });
+    ['impermeabilita_ok','materiale_ok','ricarica_ok','dimensioni_ok','vibrazioni_ok','velocita_ok',
+     'suzione_ok','tapping_ok','rotazione_ok','strap_on_ok','riscaldante_ok','asin_ok',
+     'smalt_scatola_ok','smalt_sacchetto_ok','smalt_doypack_ok','triman_contenuto_ok',
+     'sexy_ideas_ok','sexy_ideas_categoria'].forEach(id => {
+      mockResults[id] = { found: true, note: 'MOCK' };
+    });
+    return { checklist, parsed: { results: mockResults } };
+  }
+
+  const response = await fetch(window.SERVER_URL || 'http://localhost:8081/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [ contentBlock, { type: 'text', text: prompt } ] }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+
+  const data  = await response.json();
+  const text  = data.content.find(b => b.type === 'text')?.text || '{}';
+  // Estrai JSON robusto — trova il primo oggetto JSON completo
+  function extractJSON(str) {
+    const start = str.indexOf('{');
+    if (start === -1) return '{}';
+    let depth = 0;
+    for (let i = start; i < str.length; i++) {
+      if (str[i] === '{') depth++;
+      else if (str[i] === '}') { depth--; if (depth === 0) return str.slice(start, i+1); }
+    }
+    return '{}';
+  }
+  const parsed = JSON.parse(extractJSON(text));
+
+  // Sexy ideas check separato (solo se non Amazon e c'è productInfo)
+  if (!isAmazon && productInfo) {
+    try {
+      const sexyResult = await checkSexyIdeas(item, apiKey, contentBlock);
+      parsed.results = { ...parsed.results, ...sexyResult };
+    } catch(e) {
+      parsed.results.sexy_ideas_ok = { found: false, note: 'Errore verifica sexy ideas: ' + e.message };
+    }
+  } else if (isAmazon) {
+    parsed.results.sexy_ideas_ok = { found: true, note: 'Versione Amazon - sexy ideas non previste' };
+  }
+
+  return { checklist, parsed, hasProductInfo: !!productInfoForPrompt, hasSmaltimento: !!item.smaltimento };
+}
+
+// ── RENDER RESULT ────────────────────────────────────────────────
+function renderResult(item, checklist, parsed, error) {
+  const card = document.getElementById(`result-${item.id}`);
+  if (!card) return;
+
+  if (error) {
+    card.querySelector('.result-badge').className = 'result-badge badge-err';
+    card.querySelector('.result-badge').textContent = '✗ Errore';
+    card.querySelector('.result-body').innerHTML = `<div class="error-msg">⚠ ${error}</div>`;
+    card.querySelector('.result-body').classList.add('open');
+    updateSummary();
+    return;
+  }
+
+  const res       = parsed.results || {};
+  const allFields = checklist.flatMap(g => g.fields);
+  // Include extra fields in count
+  const extraIds = ['impermeabilita_ok','materiale_ok','ricarica_ok','dimensioni_ok',
+                    'vibrazioni_ok','velocita_ok','suzione_ok','tapping_ok','rotazione_ok',
+                    'strap_on_ok','riscaldante_ok',
+                    'smalt_scatola_ok','smalt_sacchetto_ok','smalt_doypack_ok','sexy_ideas_ok','asin_ok'];
+  const extraFields = extraIds.filter(id => res[id] !== undefined);
+  const allIds = [...allFields.map(f => f.id), ...extraFields];
+  const found     = allIds.filter(id => res[id]?.found ?? res[id] === true).length;
+  const missing   = allIds.length - found;
+
+  const badgeClass = missing === 0 ? 'badge-ok' : missing <= 2 ? 'badge-warn' : 'badge-err';
+  const badgeText  = missing === 0 ? '✓ Completo' : `✗ ${missing} mancanti`;
+
+  card.querySelector('.result-badge').className  = `result-badge ${badgeClass}`;
+  card.querySelector('.result-badge').textContent = badgeText;
+
+  let html = '';
+
+  // Compliance fields
+  for (const { section, fields } of checklist) {
+    html += `<div class="check-group"><div class="check-group-title">${section}</div>`;
+    for (const f of fields) {
+      const r   = res[f.id] || {};
+      const icon = r.found ? '✅' : '❌';
+      html += `<div class="check-item">
+        <span class="check-icon">${icon}</span>
+        <div>
+          <div class="check-label ${r.found ? 'found' : ''}">${f.label}</div>
+          ${r.note ? `<div class="check-note">${r.note}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // Product info section
+  const prodFields = [
+    { id: 'impermeabilita_ok', label: 'Impermeabilità' },
+    { id: 'materiale_ok',      label: 'Materiale' },
+    { id: 'ricarica_ok',       label: 'Modalità di ricarica' },
+    { id: 'dimensioni_ok',     label: 'Dimensioni' },
+    { id: 'vibrazioni_ok',     label: 'N. vibrazioni' },
+    { id: 'velocita_ok',       label: 'N. velocità' },
+    { id: 'suzione_ok',        label: 'N. modalità suzione' },
+    { id: 'tapping_ok',        label: 'N. modalità tapping' },
+    { id: 'rotazione_ok',      label: 'N. modalità rotazione' },
+    { id: 'strap_on_ok',       label: 'Strap-on compatibile' },
+    { id: 'riscaldante_ok',    label: 'Funzione riscaldante' },
+    { id: 'asin_ok',           label: 'Codice ASIN' },
+  ].filter(f => res[f.id] !== undefined);
+  if (prodFields.length > 0) {
+    html += `<div class="check-group"><div class="check-group-title">Info Prodotto</div>`;
+    for (const f of prodFields) {
+      const r = res[f.id] || {};
+      html += `<div class="check-item">
+        <span class="check-icon">${r.found ? '✅' : '❌'}</span>
+        <div>
+          <div class="check-label ${r.found ? 'found' : ''}">${f.label}</div>
+          ${r.note ? `<div class="check-note">${r.note}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // Smaltimento section
+  const smaltFields = [
+    { id: 'smalt_scatola_ok',      label: 'Codice smaltimento scatola' },
+    { id: 'smalt_sacchetto_ok',    label: 'Codice smaltimento sacchetto igienico' },
+    { id: 'smalt_doypack_ok',      label: 'Codice smaltimento doypack' },
+    { id: 'triman_contenuto_ok',   label: 'Contenuto TRIMAN corretto' },
+  ].filter(f => res[f.id] !== undefined);
+  if (smaltFields.length > 0) {
+    html += `<div class="check-group"><div class="check-group-title">Codici Smaltimento Materiali</div>`;
+    for (const f of smaltFields) {
+      const r = res[f.id] || {};
+      html += `<div class="check-item">
+        <span class="check-icon">${r.found ? '✅' : '❌'}</span>
+        <div>
+          <div class="check-label ${r.found ? 'found' : ''}">${f.label}</div>
+          ${r.note ? `<div class="check-note">${r.note}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // Sexy ideas section
+  if (res['sexy_ideas_ok'] !== undefined) {
+    const r = res['sexy_ideas_ok'] || {};
+    const cat = res['sexy_ideas_categoria']?.note || res['sexy_ideas_categoria'] || '';
+    html += `<div class="check-group"><div class="check-group-title">Sexy Ideas${cat ? ` — ${typeof cat === 'object' ? cat.note || '' : cat}` : ''}</div>`;
+    html += `<div class="check-item">
+      <span class="check-icon">${r.found ? '✅' : '❌'}</span>
+      <div>
+        <div class="check-label ${r.found ? 'found' : ''}">Frasi corrette presenti</div>
+        ${r.note ? `<div class="check-note">${r.note}</div>` : ''}
+      </div>
+    </div>`;
+    if (res['sexy_ideas_note']) {
+      const n = res['sexy_ideas_note'];
+      const noteText = typeof n === 'object' ? n.note || '' : n;
+      if (noteText) html += `<div class="check-note" style="padding:4px 0 8px 24px">${noteText}</div>`;
+    }
+    html += '</div>';
+  }
+
+  card.querySelector('.result-body').innerHTML = html;
+  card.querySelector('.result-body').classList.add('open');
+  updateSummary();
+}
+
+function updateSummary() {
+  const badges = document.querySelectorAll('.result-badge');
+  const ok     = [...badges].filter(b => b.classList.contains('badge-ok')).length;
+  const warn   = [...badges].filter(b => b.classList.contains('badge-warn')).length;
+  const err    = [...badges].filter(b => b.classList.contains('badge-err')).length;
+  const bar    = document.getElementById('summary-bar');
+  if (bar) {
+    bar.querySelector('.s-total .num').textContent = ok + warn + err;
+    bar.querySelector('.s-ok .num').textContent    = ok;
+    bar.querySelector('.s-warn .num').textContent  = warn;
+    bar.querySelector('.s-err .num').textContent   = err;
+  }
+}
+
+// ── RUN ──────────────────────────────────────────────────────────
+runBtn.addEventListener('click', async () => {
+  const apiKey    = window.API_KEY_MANAGED ? 'managed' : apiKeyEl.value.trim();
+  const toProcess = pdfFiles.filter(f => f.docType);
+  if (!apiKey || !toProcess.length) return;
+
+  results.innerHTML = `
+    <div class="summary-bar" id="summary-bar">
+      <div class="summary-stat s-total"><div class="num">0</div><div class="lbl">Processati</div></div>
+      <div class="divider"></div>
+      <div class="summary-stat s-ok"><div class="num" style="color:var(--ok)">0</div><div class="lbl">Completi</div></div>
+      <div class="summary-stat s-warn"><div class="num" style="color:var(--warn)">0</div><div class="lbl">Parziali</div></div>
+      <div class="summary-stat s-err"><div class="num" style="color:var(--err)">0</div><div class="lbl">Errori</div></div>
+    </div>
+  `;
+
+  const unmatched = pdfFiles.filter(f => !f.docType);
+  if (unmatched.length) {
+    results.innerHTML += `<div class="warn-msg">⚠ ${unmatched.length} PDF ignorati — EAN non presente nel mapping: ${unmatched.map(f => f.file.name).join(', ')}</div>`;
+  }
+
+  for (const item of toProcess) {
+    const typeLabel = item.docType === 'packaging_el' ? 'Packaging Elettrico' : 'Packaging Non Elettrico';
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.id = `result-${item.id}`;
+    card.innerHTML = `
+      <div class="result-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.chevron').classList.toggle('open')">
+        <div class="result-title">
+          <strong>${item.file.name}</strong>
+          <span>EAN ${item.ean} · ${typeLabel}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="result-badge badge-loading"><span class="spinner"></span>Analisi...</span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="result-body">
+        <div style="color:var(--text-muted);font-size:13px;padding:8px 0">Elaborazione in corso...</div>
+      </div>`;
+    results.appendChild(card);
+  }
+
+  runBtn.disabled = true;
+  runBtn.textContent = 'Analisi in corso...';
+
+  // Processo sequenziale per evitare rate limit
+  for (const item of toProcess) {
+    try {
+      const { checklist, parsed } = await checkFile(item, apiKey);
+      renderResult(item, checklist, parsed, null);
+    } catch(e) {
+      renderResult(item, [], null, e.message);
+    }
+    await new Promise(r => setTimeout(r, 6000));
+  }
+
+  runBtn.disabled = false;
+  runBtn.textContent = 'Avvia controllo compliance →';
+  updateRunBtn();
+});
+</script>
+</body>
+</html>
