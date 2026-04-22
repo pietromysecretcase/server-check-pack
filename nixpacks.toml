@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["poppler_utils"]
+
+[start]
+cmd = "python server.py"
